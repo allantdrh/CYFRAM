@@ -18,10 +18,10 @@ extern "C" {
 #include <stdint.h>
 
 // Arduino IO Assignment for SPI
-#define SI      11 //MOSI
-#define SO      12 //MISO
-#define SCK     13 //sck
-#define CS      10 //ss
+// #define SI      11 //MOSI
+// #define SO      12 //MISO
+// #define SCK     13 //sck
+#define CS      17 //ss
 
 // SPI F-RAM Opcodes
 #define WREN  0x06   // Write Enable Opcode
@@ -44,6 +44,9 @@ extern "C" {
 // SPI F-RAM Initialization
 extern void  FRAM_SPI_Init  ( void  );
 
+// SPI F-RAM Erase all
+extern void FRAM_ERASE();
+
 // F-RAM Write function
 extern void  FRAM_SPI_Write ( uint32_t , uint8_t );
 
@@ -61,6 +64,9 @@ extern void  FRAM_SPI_Status_Reg_Write( uint8_t  );
 
 // Status register read function
 extern uint8_t  FRAM_SPI_Status_Reg_Read ( void   );
+
+// F-RAM Set Write Enable
+extern void FRAM_WREN_SET( void );
 
 #endif // End of CYSPIFRAM_H
 

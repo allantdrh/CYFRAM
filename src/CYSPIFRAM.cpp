@@ -20,12 +20,22 @@
 void FRAM_SPI_Init()
 {
     // Initialize SPI
-    SPI.begin();
+    SPI1.begin();
+    // SPI1.setClockDivider(3);
+    SPI1.setClockDivider(SPI_CLOCK_DIV2);
 
     // set the CS as an output:
     pinMode(CS, OUTPUT);
 
     digitalWrite(CS,HIGH); //Disable Chip
+
+}
+
+void FRAM_ERASE() {
+  for (size_t i = 0; i < 0x8000; i++)
+  {
+    FRAM_SPI_Write(i,0);
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -39,16 +49,14 @@ void FRAM_SPI_Init()
 void FRAM_SPI_Write(uint32_t FRAM_address, uint8_t FRAM_data)
 {
   // F-RAM WRITE ENABLE COMMAND
-  digitalWrite(CS,LOW);  //chip select
-  SPI.transfer(WREN);    //transmit write enable opcode
-  digitalWrite(CS,HIGH); //release chip, signal end transfer
+  FRAM_WREN_SET();
 
   // F-RAM WRITE OPERATION
   digitalWrite(CS,LOW);                      //chip select
-  SPI.transfer(WRITE);                       //transmit write opcode
-  SPI.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
-  SPI.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
-  SPI.transfer((uint8_t)(FRAM_data));        //send 1 byte data
+  SPI1.transfer(WRITE);                       //transmit write opcode
+  SPI1.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
+  SPI1.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
+  SPI1.transfer((uint8_t)(FRAM_data));        //send 1 byte data
   digitalWrite(CS,HIGH);                     //release chip, signal end of transfer
 }
 
@@ -67,10 +75,10 @@ uint8_t FRAM_SPI_Read(uint32_t FRAM_address)
   //FRAM READ OPERATION
 
   digitalWrite(CS,LOW);                     //chip select
-  SPI.transfer(READ);                       //transmit read opcode
-  SPI.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
-  SPI.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
-  data = SPI.transfer(0xFF);                //get data byte from F-RAM
+  SPI1.transfer(READ);                       //transmit read opcode
+  SPI1.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
+  SPI1.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
+  data = SPI1.transfer(0xFF);                //get data byte from F-RAM
   digitalWrite(CS,HIGH);                    //release chip, signal end of transfer
 
   return data;   // Return data byte
@@ -94,21 +102,21 @@ void FRAM_SPI_BurstWrite(uint32_t FRAM_address, uint8_t * FRAM_wr_data_ptr, uint
       return;
 
   // F-RAM WRITE ENABLE COMMAND
-  digitalWrite(CS,LOW);  //chip select
-  SPI.transfer(WREN);    //transmit write enable opcode
-  digitalWrite(CS,HIGH); //release chip, signal end transfer
+  FRAM_WREN_SET();
 
   // F-RAM WRITE OPERATION
-  digitalWrite(CS,LOW);                   //chip select
-  SPI.transfer(WRITE);                    //transmit write opcode
-  SPI.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
-  SPI.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
+  // digitalWrite(CS,LOW);                   //chip select
+  PORT->Group[0].OUTCLR.reg = PORT_PA08;
+  SPI1.transfer(WRITE);                    //transmit write opcode
+  SPI1.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
+  SPI1.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
 
   // Data byte transmission
   for(i=0;i<total_count;i++)
-     SPI.transfer((uint8_t)(FRAM_wr_data_ptr[i]));        //send 1 byte data at a time
+     SPI1.transfer((uint8_t)(FRAM_wr_data_ptr[i]));        //send 1 byte data at a time
 
-  digitalWrite(CS,HIGH);                  //release chip, signal end of transfer
+  // digitalWrite(CS,HIGH);                  //release chip, signal end of transfer
+  PORT->Group[0].OUTSET.reg = PORT_PA08;
 }
 
 //--------------------------------------------------------------------------------------
@@ -132,12 +140,12 @@ void FRAM_SPI_BurstRead(uint32_t FRAM_address, uint8_t * FRAM_rd_data_ptr, uint3
   //FRAM READ OPERATION
 
   digitalWrite(CS,LOW);                     //chip select
-  SPI.transfer(READ);                       //transmit read opcode
-  SPI.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
-  SPI.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
+  SPI1.transfer(READ);                       //transmit read opcode
+  SPI1.transfer(MSB_ADDR_BYTE(FRAM_address));  //send MSByte address first
+  SPI1.transfer(LSB_ADDR_BYTE(FRAM_address));  //send LSByte address
   
   for(i=0;i<total_count;i++)
-     FRAM_rd_data_ptr[i] = SPI.transfer(0xFF);  //get all the data bytes from F-RAM
+     FRAM_rd_data_ptr[i] = SPI1.transfer(0xFF);  //get all the data bytes from F-RAM
 
   digitalWrite(CS,HIGH);  //release chip, signal end of transfer
 
@@ -153,15 +161,13 @@ void FRAM_SPI_BurstRead(uint32_t FRAM_address, uint8_t * FRAM_rd_data_ptr, uint3
 void FRAM_SPI_Status_Reg_Write(uint8_t FRAM_data)
 {
   // F-RAM WRITE ENABLE COMMAND
-  digitalWrite(CS,LOW);  //chip select
-  SPI.transfer(WREN);    //transmit write enable opcode
-  digitalWrite(CS,HIGH); //release chip, signal end transfer
+  FRAM_WREN_SET();
 
   // F-RAM STATUS WRITE OPERATION
 
   digitalWrite(CS,LOW);                //chip select
-  SPI.transfer(WRSR);                  //transmit status write opcode
-  SPI.transfer((uint8_t)(FRAM_data));  //send status byte
+  SPI1.transfer(WRSR);                  //transmit status write opcode
+  SPI1.transfer((uint8_t)(FRAM_data));  //send status byte
   digitalWrite(CS,HIGH);               //release chip, signal end of transfer
 }
 
@@ -180,10 +186,17 @@ uint8_t FRAM_SPI_Status_Reg_Read(void)
   //FRAM STATUS READ OPERATION
 
   digitalWrite(CS,LOW);      //chip select
-  SPI.transfer(RDSR);        //transmit read opcode
-  data = SPI.transfer(0xFF); //get status data byte from F-RAM
+  SPI1.transfer(RDSR);        //transmit read opcode
+  data = SPI1.transfer(0xFF); //get status data byte from F-RAM
   digitalWrite(CS,HIGH);     //release chip, signal end of transfer
 
   return data;
 }
 
+void FRAM_WREN_SET() {
+  // digitalWrite(CS,LOW);  //chip select
+  PORT->Group[0].OUTCLR.reg = PORT_PA08;
+  SPI1.transfer(WREN);    //transmit write enable opcode
+  PORT->Group[0].OUTSET.reg = PORT_PA08;
+  // digitalWrite(CS,HIGH); //release chip, signal end transfer
+}
